@@ -91,10 +91,10 @@ int OnInit()
     // Tamaño de pip: XAUUSD tiene 2 dígitos → 1 pip = 10 puntos
     g_pipSize = (_Digits >= 2) ? _Point * 10.0 : _Point;
 
-    // Crear handles de indicadores
-    g_hEMAFast  = iEMA(sym, PERIOD_M1, InpEMA_Fast,  0, MODE_EMA, PRICE_CLOSE);
-    g_hEMASlow  = iEMA(sym, PERIOD_M1, InpEMA_Slow,  0, MODE_EMA, PRICE_CLOSE);
-    g_hEMATrend = iEMA(sym, PERIOD_M5, InpEMA_Trend, 0, MODE_EMA, PRICE_CLOSE);
+    // Crear handles de indicadores (iMA con MODE_EMA — no existe iEMA en MQL5)
+    g_hEMAFast  = iMA(sym, PERIOD_M1, InpEMA_Fast,  0, MODE_EMA, PRICE_CLOSE);
+    g_hEMASlow  = iMA(sym, PERIOD_M1, InpEMA_Slow,  0, MODE_EMA, PRICE_CLOSE);
+    g_hEMATrend = iMA(sym, PERIOD_M5, InpEMA_Trend, 0, MODE_EMA, PRICE_CLOSE);
     g_hRSI      = iRSI(sym, PERIOD_M1, InpRSI_Period, PRICE_CLOSE);
     g_hBB       = iBands(sym, PERIOD_M1, InpBB_Period, 0, InpBB_Dev, PRICE_CLOSE);
     g_hATR      = iATR(sym, PERIOD_M1, InpATR_Period);
@@ -387,16 +387,13 @@ void GetDailyStats(int &tradeCount, double &dailyPL)
     today.hour = 0; today.min = 0; today.sec = 0;
     datetime dayStart = StructToTime(today);
 
-    // Posiciones abiertas que se abrieron hoy
+    // Posiciones abiertas: contar solo las de hoy, pero acumular P&L de TODAS (incluye overnight)
     for(int i = PositionsTotal() - 1; i >= 0; i--)
     {
         if(!g_pos.SelectByIndex(i)) continue;
         if(g_pos.Symbol() != Symbol() || g_pos.Magic() != InpMagic) continue;
-        if(g_pos.Time() >= dayStart)
-        {
-            tradeCount++;
-            dailyPL += g_pos.Profit() + g_pos.Swap() + g_pos.Commission();
-        }
+        if(g_pos.Time() >= dayStart) tradeCount++;                          // cuenta trades abiertos hoy
+        dailyPL += g_pos.Profit() + g_pos.Swap() + g_pos.Commission();     // siempre suma al circuit breaker
     }
 
     // Trades cerrados hoy en el historial
